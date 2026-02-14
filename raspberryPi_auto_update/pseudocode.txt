@@ -1,0 +1,75 @@
+BEGIN SCRIPT
+
+    # -------------------------
+    # 1. INITIAL SETUP
+    # -------------------------
+    Define log file path
+    Define Pi hostname/IP
+    Define SSH command wrapper
+    Start new log file with timestamp
+
+    # -------------------------
+    # 2. TEST SSH CONNECTION
+    # -------------------------
+    Attempt SSH connection
+    IF success:
+        Log "SSH login successful"
+    ELSE:
+        Log "SSH login failed" + error
+        Log "Automatic update failed (see Raspberry Pi logs)"
+        EXIT SCRIPT
+
+    # -------------------------
+    # 3. LOOP 1: MAINTENANCE REPORT
+    # -------------------------
+    Log "Maintenance Report"
+
+    For each maintenance task in order:
+        - Wipe logs
+        - Check disk space
+        - Check uptime
+        - Check temperature
+        - Check throttling
+        - Check Pi-hole status
+
+        Run SSH command for task
+        IF success:
+            Log "TaskName: result"
+        ELSE:
+            Log "TaskName: Failed" + error
+        Continue to next task regardless of failure
+
+    # -------------------------
+    # 4. LOOP 2: OS UPDATES REPORT
+    # -------------------------
+    Log "OS Updates Report"
+
+    Run "apt list --upgradeable"
+        IF success: log number of updates
+        ELSE: log failure
+
+    Run "apt upgrade -y"
+        IF success: log success
+        ELSE: log failure
+
+    # -------------------------
+    # 5. LOOP 3: PIHOLE UPDATES REPORT
+    # -------------------------
+    Log "Pi-hole Updates Report"
+
+    Run "pihole -up --check-only"
+        IF success: log number of updates
+        ELSE: log failure
+
+    Run "pihole -up"
+        IF success: log success
+        ELSE: log failure
+
+    # -------------------------
+    # 6. REBOOT
+    # -------------------------
+    Run "sudo reboot"
+        IF success: log "Reboot successful"
+        ELSE: log "Reboot failed" + error
+
+END SCRIPT
