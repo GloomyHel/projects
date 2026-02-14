@@ -35,26 +35,24 @@
         [switch]$upgradeSummary
     )
 
-    "{$taskName}:" | Out-File $logPath -Append
-
     $output = ssh $piHost $sshCommand 2>&1
 
     if ($LASTEXITCODE -eq 0) {
        
         #1. Log Success
-        "{$taskName}: successful`n" | Out-File $logPath -Append
+        "{$taskName}: successful" | Out-File $logPath -Append
 
         # 2. If this task wants the apt summary, extract it        
         if ($upgradeSummary) {
 
             # Find "Not Upgrading:"
-            $notUpgradingHeader = $output | Where-Object { $_ -match "Not Upgrading:" }
+            $notUpgradingHeader = $output | Where-Object { $_ -match "Not upgrading:" }
             if ($notUpgradingHeader) {
                 $notUpgradingIndex = $output.IndexOf($notUpgradingHeader)
                 $notUpgradingBody = $output[$notUpgradingIndex + 1]
 
-                "Not Upgrading:`n" | Out-File $logPath -Append
-                "$notUpgradingBody`n" | Out-File $logPath -Append
+                "Not upgrading:" | Out-File $logPath -Append
+                "$notUpgradingBody" | Out-File $logPath -Append
             }
 
             #Find "Summary"
@@ -63,19 +61,19 @@
                 $summaryIndex = $output.IndexOf($summaryHeader)
                 $summaryBody = $output[$summaryIndex + 1]
 
-                "Summary:`n" | Out-File $logPath -Append
-                "$summaryBody`n" | Out-File $logPath -Append
+                "Summary:" | Out-File $logPath -Append
+                "$summaryBody" | Out-File $logPath -Append
             }
         }
                
         # 3. If NOT upgradeSummary, and NOT successOnly, print normal output
         if (-not $upgradeSummary -and -not $successOnly) {        
-            "{$taskName}: $output`n" | Out-File $logPath -Append
+            "{$taskName}: $output" | Out-File $logPath -Append
         }
     }
     else {
-        "{$taskName}: failed`n" | Out-File $logPath -Append
-        "Error: $($output[0])`n" | Out-File $logPath -Append
+        "{$taskName}: failed" | Out-File $logPath -Append
+        "Error: $($output[0])" | Out-File $logPath -Append
     }
 }
     # -------------------------
@@ -95,7 +93,24 @@
     # -------------------------
     "----`n OS UPDATES REPORT `n----"  | Out-File $logPath -Append
 
-    Run-SSH -taskName "Number of package updates available" -sshCommand "sudo apt -update"
+    Run-SSH -taskName "Number of package updates available" -sshCommand "apt list --upgradeable 2>/dev/null | wc -l"
     Run-SSH -taskName "Package upgrades" -sshCommand "sudo apt upgrade" -upgradeSummary
 
-  
+    # -------------------------
+    # 6. LOOP 3: PIHOLE UPDATES REPORT
+    # -------------------------
+    "----`n PIHOLE UPDATES REPORT `n----"  | Out-File $logPath -Append
+
+    Run-SSH -taskName "Pi-hole updates check" -sshCommand "pihole -v"
+    Run-SSH -taskName "Pi-hole updates" -sshCommand "pihole -up" -successOnly
+
+    # -------------------------
+    # 7. REBOOT
+    # -------------------------
+    "----`n RASPBERRY PI REBOOT `n----"  | Out-File $logPath -Append  
+    Run-SSH -taskName "Rebooting Raspberry Pi" -sshCommand "sudo reboot" -successOnly
+
+    # -------------------------
+    # 8. FINAL LOG ENTRY
+    # -------------------------
+    "Automatic update completed: $timestamp`n (see Raspberry Pi logs)" | Out-File $logPath -Append
