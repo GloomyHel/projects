@@ -1,7 +1,7 @@
     # -------------------------
     # 1. INITIAL SETUP
     # -------------------------
-    $logPath = "C:\Users\hellz\OneDrive\Programing\powershell\projects\raspberryPi_auto_update\logs.txt"
+    $logPath = "C:\Users\hellz\OneDrive\Programing\powershell\projects\raspberryPi_auto_update\pihole_update.log"
     $piHost = "thewizard@blockmagic"
     $ssh = "ssh $piHost"
     $startTime = Get-Date
@@ -70,11 +70,7 @@
                
         # 3. If NOT upgradeSummary, and NOT successOnly, print normal output
         if (-not $upgradeSummary -and -not $successOnly) {        
-            if ($outputLabel) {
-                "{$outputLabel}: $output`n" | Out-File $logPath -Append
-            }
-            else {
-                "{$taskName} output: $output`n" | Out-File $logPath -Append
+            "{$outputLabel}: $output`n" | Out-File $logPath -Append
             }
         }
     }
