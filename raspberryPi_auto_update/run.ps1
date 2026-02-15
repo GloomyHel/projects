@@ -4,10 +4,11 @@
     $logPath = "C:\Users\hellz\OneDrive\Programing\powershell\projects\raspberryPi_auto_update\logs.txt"
     $piHost = "thewizard@blockmagic"
     $ssh = "ssh $piHost"
-    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $startTime = Get-Date
+    $timestamp = $startTime.ToString("yyyy-MM-dd HH:mm:ss")
 
-    "-------------------------`n PIHOLE AUTOMATIC UPDATE LOG `n-------------------------" | Out-File $logPath -Append
-    "Last run: $timestamp`n" | Out-File $logPath -Append
+    "-----------------------------------`n PIHOLE AUTOMATIC UPDATE LOG `n-----------------------------------" | Out-File $logPath
+    "Last run: $timestamp" | Out-File $logPath -Append
 
     # -------------------------
     # 2. TEST SSH CONNECTION
@@ -15,11 +16,11 @@
     $output = ssh $piHost "echo connected" 2>&1
 
     if ($LASTEXITCODE -eq 0) {
-        "SSH login: successful" | Out-File $logPath -Append
+        "SSH login: successful`n" | Out-File $logPath -Append
     }
     else {
-        "SSH login: failed`n" | Out-File $logPath -Append
-        "Error: $($output[0])`n" | Out-File $logPath -Append
+        "SSH login: failed" | Out-File $logPath -Append
+        "Error: $($output[0])" | Out-File $logPath -Append
         "Automatic update failed (see Raspberry Pi logs)`n" | Out-File $logPath -Append
         exit
     }
@@ -31,6 +32,7 @@
     param(
         [string]$taskName,
         [string]$sshCommand,
+        [string]$outputLabel,
         [switch]$successOnly,
         [switch]$upgradeSummary
     )
@@ -62,55 +64,71 @@
                 $summaryBody = $output[$summaryIndex + 1]
 
                 "Summary:" | Out-File $logPath -Append
-                "$summaryBody" | Out-File $logPath -Append
+                "$summaryBody`n" | Out-File $logPath -Append
             }
         }
                
         # 3. If NOT upgradeSummary, and NOT successOnly, print normal output
         if (-not $upgradeSummary -and -not $successOnly) {        
-            "{$taskName}: $output" | Out-File $logPath -Append
+            if ($outputLabel) {
+                "{$outputLabel}: $output`n" | Out-File $logPath -Append
+            }
+            else {
+                "{$taskName} output: $output`n" | Out-File $logPath -Append
+            }
         }
     }
     else {
+        if ($outputLabel) {
+            "{$outputLabel}: failed" | Out-File $logPath -Append
+            "Error: $($output[0])`n" | Out-File $logPath -Append
+        }
+        else {
         "{$taskName}: failed" | Out-File $logPath -Append
-        "Error: $($output[0])" | Out-File $logPath -Append
+        "Error: $($output[0])`n" | Out-File $logPath -Append
     }
 }
     # -------------------------
     # 4. LOOP 1: MAINTENANCE REPORT
     # -------------------------
-    "----`n MAINTENANCE REPORT `n----"  | Out-File $logPath -Append
+    "----------`n MAINTENANCE REPORT `n----------"  | Out-File $logPath -Append
 
     Run-SSH -taskName "Wipe logs" -sshCommand "sudo rm -rf /var/log/*" -SuccessOnly
-    Run-SSH -taskName "Check disk space" -sshCommand "df -h /"
-    Run-SSH -taskName "Check uptime" -sshCommand "uptime -p"
-    Run-SSH -taskName "Check temperature" -sshCommand "vcgencmd measure_temp"
-    Run-SSH -taskName "Check throttling" -sshCommand "vcgencmd get_throttled"
-    Run-SSH -taskName "Check Pi-hole status" -sshCommand "pihole status"
+    Run-SSH -taskName "Check disk space" -outputLabel "Disk space" -sshCommand "df -h /"
+    Run-SSH -taskName "Check uptime" -outputLabel "Uptime" -sshCommand "uptime -p"
+    Run-SSH -taskName "Check temperature" -outputLabel "Temperature" -sshCommand "vcgencmd measure_temp"
+    Run-SSH -taskName "Check throttling" -outputLabel "Throttling" -sshCommand "vcgencmd get_throttled"
+    Run-SSH -taskName "Check Pi-hole status" -outputLabel "Pi-hole status" -sshCommand "pihole status"
     
     # -------------------------
     # 5. LOOP 2: OS UPDATES REPORT
     # -------------------------
-    "----`n OS UPDATES REPORT `n----"  | Out-File $logPath -Append
+    "----------`n OS UPDATES REPORT `n----------"  | Out-File $logPath -Append
 
-    Run-SSH -taskName "Number of package updates available" -sshCommand "apt list --upgradeable 2>/dev/null | wc -l"
+    Run-SSH -taskName "Check for package updates" -outputLabel "Number of package updates available" -sshCommand "apt list --upgradeable 2>/dev/null | wc -l"
     Run-SSH -taskName "Package upgrades" -sshCommand "sudo apt upgrade" -upgradeSummary
 
     # -------------------------
     # 6. LOOP 3: PIHOLE UPDATES REPORT
     # -------------------------
-    "----`n PIHOLE UPDATES REPORT `n----"  | Out-File $logPath -Append
+    "----------`n PIHOLE UPDATES REPORT `n----------"  | Out-File $logPath -Append
 
-    Run-SSH -taskName "Pi-hole updates check" -sshCommand "pihole -v"
+    Run-SSH -taskName "Check for Pi-hole updates" -outputLabel "Pi-hole versions" -sshCommand "pihole -v"
     Run-SSH -taskName "Pi-hole updates" -sshCommand "pihole -up" -successOnly
 
     # -------------------------
     # 7. REBOOT
     # -------------------------
-    "----`n RASPBERRY PI REBOOT `n----"  | Out-File $logPath -Append  
-    Run-SSH -taskName "Rebooting Raspberry Pi" -sshCommand "sudo reboot" -successOnly
+    "----------`n RASPBERRYPI REBOOT `n----------"  | Out-File $logPath -Append  
+
+   # Run-SSH -taskName "Rebooting Raspberry Pi" -sshCommand "sudo reboot" -successOnly
 
     # -------------------------
-    # 8. FINAL LOG ENTRY
+    # 8. FINAL SUMMARY AND RUNTIME CALCULATION
     # -------------------------
-    "Automatic update completed: $timestamp`n (see Raspberry Pi logs)" | Out-File $logPath -Append
+    "----------`n FINAL SUMMARY `n----------"  | Out-File $logPath -Append
+
+    # Calculate total runtime
+    $endTime = Get-Date
+    $duration = $endTime - $startTime
+    "Automatic update completed: $timestamp`nTotal runtime: $duration`n(see Raspberry Pi logs)" | Out-File $logPath -Append

@@ -1,0 +1,13 @@
+#ignore the following files and directories
+
+#ignore all files except .ps1 files in the root directory
+venv/
+#ignore all .log files in the root directory
+*.log
+#ignore all .log files in the raspberryPi_auto_update directory
+raspberryPi_auto_update/*.log
+#ignore all .png files in the raspberryPi_auto_update directory
+raspberryPi_auto_update/*.png
+#ignore specific files in the raspberryPi_auto_update directory files
+raspberryPi_auto_update/pihole_update.log
+raspberryPi_auto_update/logs.txt
