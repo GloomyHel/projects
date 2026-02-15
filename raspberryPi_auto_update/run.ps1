@@ -93,6 +93,10 @@
                     # Print result
                     "{$label}: $body" | Out-File $logPath -Append
                 }
+                else {
+                    # No match found — print error but continue
+                    "ERROR: No match found for '$key' — check input value" | Out-File $logPath -Append
+                }
             }
         }
                
@@ -148,7 +152,7 @@
     "----------`n OS UPDATES REPORT `n----------"  | Out-File $logPath -Append
 
     Run-SSH -taskName "Check for package updates" -outputLabel "Number of package updates available" -sshCommand "apt list --upgradeable 2>/dev/null | wc -l"
-    Run-SSH -taskName "Package upgrades" -sshCommand "sudo apt upgrade" -upgradeSummary @("summary","not upgraded")
+    Run-SSH -taskName "Package upgrades" -sshCommand "sudo apt upgrade" -upgradeSummary @("summary","not upgrading")
 
     # -------------------------
     # 6. LOOP 3: PI-HOLE UPDATES REPORT
