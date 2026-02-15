@@ -49,25 +49,50 @@
         #1. Log Success
         "{$taskName}: successful" | Out-File $logPath -Append
 
-        # 2. If this task wants the apt summary, extract it        
+        # 2. Dynamic summary extraction
         if ($upgradeSummary) {
 
-            #Find "Summary"
-            $summaryHeader = $output | Where-Object { $_ -match "^Summary:" }
-            if ($summaryHeader) {
-                $summaryIndex = $output.IndexOf($summaryHeader)
-                $summaryBody = $output[$summaryIndex + 1]
+            # Normalize input into a flat list of keys
+            $summarySpecs = @()
+            $flat = @()
 
-                "SUMMARY: $summaryBody" | Out-File $logPath -Append
+            foreach ($item in $upgradeSummary) {
+
+                if ($item -is [string]) {
+                    $flat += ($item -split ",")
+                }
+                elseif ($item -is [array]) {
+                    $flat += $item
+                }
             }
 
-            # Find "Not Upgrading:"
-            $notUpgradingHeader = $output | Where-Object { $_ -match "Not upgrading:" }
-            if ($notUpgradingHeader) {
-                $notUpgradingIndex = $output.IndexOf($notUpgradingHeader)
-                $notUpgradingBody = $output[$notUpgradingIndex + 1]
+            foreach ($p in $flat) {
+                $trimmed = $p.Trim()
+                if ($trimmed) {
+                    $summarySpecs += $trimmed
+                }
+            }
 
-                "NOT UPGRADING: $notUpgradingBody`n" | Out-File $logPath -Append
+            # For each key, find matching header dynamically
+            foreach ($key in $summarySpecs) {
+
+                $keyLower = $key.ToLower()
+
+                # Find the first line in output that contains the key
+                $header = $output | Where-Object { $_.ToLower().Contains($keyLower) }
+
+                if ($header) {
+                    $index = $output.IndexOf($header)
+                    $body  = $output[$index + 1]
+
+                    # Format label: Title Case
+                    $label = ($key -split " " | ForEach-Object {
+                        $_.Substring(0,1).ToUpper() + $_.Substring(1).ToLower()
+                    }) -join " "
+
+                    # Print result
+                    "{$label}: $body" | Out-File $logPath -Append
+                }
             }
         }
                
@@ -123,7 +148,7 @@
     "----------`n OS UPDATES REPORT `n----------"  | Out-File $logPath -Append
 
     Run-SSH -taskName "Check for package updates" -outputLabel "Number of package updates available" -sshCommand "apt list --upgradeable 2>/dev/null | wc -l"
-    Run-SSH -taskName "Package upgrades" -sshCommand "sudo apt upgrade" -upgradeSummary
+    Run-SSH -taskName "Package upgrades" -sshCommand "sudo apt upgrade" -upgradeSummary @("summary","not upgraded")
 
     # -------------------------
     # 6. LOOP 3: PI-HOLE UPDATES REPORT
