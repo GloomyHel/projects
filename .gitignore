@@ -10,7 +10,5 @@ raspberryPi_auto_update/*.log
 raspberryPi_auto_update/*.png
 #ignore specific files in the raspberryPi_auto_update directory files
 raspberryPi_auto_update/pihole_update.log
-raspberryPi_auto_update/logs.txt
-raspberryPi_auto_update/run.txt
-raspberryPi_auto_update/testrun.ps1
-raspberryPi_auto_update/testrun_logs.txt
+raspberryPi_auto_update/log.txt
+raspberryPi_auto_update/runwDebugs.txt

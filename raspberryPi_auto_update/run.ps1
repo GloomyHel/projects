@@ -1,7 +1,7 @@
     # -------------------------
     # 1. INITIAL SETUP
     # -------------------------
-    $logPath = "C:\Users\hellz\OneDrive\Programing\powershell\projects\raspberryPi_auto_update\logs.txt"
+    $logPath = "C:\Users\hellz\OneDrive\Programing\powershell\projects\raspberryPi_auto_update\raspberryPi_update.log"
     $piHost = "thewizard@blockmagic"
     $ssh = "ssh $piHost"
     $startTime = Get-Date
@@ -14,7 +14,7 @@
     # 2. TEST SSH CONNECTION
     # -------------------------
     # Force PowerShell to treat SSH output as UTF-8
-    $OutputEncoding = [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+    $outputEncoding = [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
     $output = ssh $piHost "echo connected" 2>&1
 
     if ($LASTEXITCODE -eq 0) {
@@ -40,13 +40,34 @@
     )
 
     $output = ssh $piHost $sshCommand 2>&1
-    # Split on any newline variant
-    $output = $output -split "\r?\n"
-    # Remove any remaining control characters
-    $output = $output -replace "[\x00-\x1F\x7F]", ""
-    # Trim whitespace from each line
-    $output = $output | ForEach-Object { $_.Trim() }
+    $output = @($output)
+    #$output = ssh $piHost "bash -lc '$sshCommand'" 2>&1
 
+    # RAW DEBUG
+    "RAW [$taskName]: >$output<" | Out-File $logPath -Append
+
+    #$output = $output -split "\r?\n"
+    #$output = $output -replace "[\x00-\x1F\x7F]", ""
+    #$output = $output | ForEach-Object { $_.Trim() }
+    #$output = $output | ForEach-Object { $_.TrimStart() }
+    
+    # --- DEBUG: inspect raw output shape ---
+    "DEBUG [$taskName] ------------------------" | Out-File $logPath -Append
+
+    if ($null -eq $output) {
+        "DEBUG: output is NULL" | Out-File $logPath -Append
+    }
+    else {
+        "DEBUG Type: $($output.GetType().FullName)" | Out-File $logPath -Append
+        "DEBUG Count: $($output.Count)" | Out-File $logPath -Append
+
+        for ($i = 0; $i -lt $output.Count; $i++) {
+            "DEBUG output[$i]: >$($output[$i])<" | Out-File $logPath -Append
+        }
+    }
+
+    "DEBUG END [$taskName] --------------------`n" | Out-File $logPath -Append  
+    
     if ($LASTEXITCODE -eq 0) {
        
         #1. Log Success
