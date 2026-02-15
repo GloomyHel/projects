@@ -1,18 +1,20 @@
     # -------------------------
     # 1. INITIAL SETUP
     # -------------------------
-    $logPath = "C:\Users\hellz\OneDrive\Programing\powershell\projects\raspberryPi_auto_update\pihole_update.log"
+    $logPath = "C:\Users\hellz\OneDrive\Programing\powershell\projects\raspberryPi_auto_update\logs.txt"
     $piHost = "thewizard@blockmagic"
     $ssh = "ssh $piHost"
     $startTime = Get-Date
     $timestamp = $startTime.ToString("yyyy-MM-dd HH:mm:ss")
 
-    "-----------------------------------`n PIHOLE AUTOMATIC UPDATE LOG `n-----------------------------------" | Out-File $logPath
+    "-----------------------------------`n RASPBERRY-PI AUTOMATIC UPDATE LOG `n-----------------------------------" | Out-File $logPath
     "Last run: $timestamp" | Out-File $logPath -Append
 
     # -------------------------
     # 2. TEST SSH CONNECTION
     # -------------------------
+    # Force PowerShell to treat SSH output as UTF-8
+    $OutputEncoding = [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
     $output = ssh $piHost "echo connected" 2>&1
 
     if ($LASTEXITCODE -eq 0) {
@@ -38,6 +40,12 @@
     )
 
     $output = ssh $piHost $sshCommand 2>&1
+    # Split on any newline variant
+    $output = $output -split "\r?\n"
+    # Remove any remaining control characters
+    $output = $output -replace "[\x00-\x1F\x7F]", ""
+    # Trim whitespace from each line
+    $output = $output | ForEach-Object { $_.Trim() }
 
     if ($LASTEXITCODE -eq 0) {
        
@@ -47,41 +55,52 @@
         # 2. If this task wants the apt summary, extract it        
         if ($upgradeSummary) {
 
-            # Find "Not Upgrading:"
-            $notUpgradingHeader = $output | Where-Object { $_ -match "Not upgrading:" }
-            if ($notUpgradingHeader) {
-                $notUpgradingIndex = $output.IndexOf($notUpgradingHeader)
-                $notUpgradingBody = $output[$notUpgradingIndex + 1]
-
-                "Not upgrading:" | Out-File $logPath -Append
-                "$notUpgradingBody" | Out-File $logPath -Append
-            }
-
             #Find "Summary"
             $summaryHeader = $output | Where-Object { $_ -match "^Summary:" }
             if ($summaryHeader) {
                 $summaryIndex = $output.IndexOf($summaryHeader)
                 $summaryBody = $output[$summaryIndex + 1]
 
-                "Summary:" | Out-File $logPath -Append
-                "$summaryBody`n" | Out-File $logPath -Append
+                "SUMMARY: $summaryBody" | Out-File $logPath -Append
+            }
+
+            # Find "Not Upgrading:"
+            $notUpgradingHeader = $output | Where-Object { $_ -match "Not upgrading:" }
+            if ($notUpgradingHeader) {
+                $notUpgradingIndex = $output.IndexOf($notUpgradingHeader)
+                $notUpgradingBody = $output[$notUpgradingIndex + 1]
+
+                "NOT UPGRADING: $notUpgradingBody`n" | Out-File $logPath -Append
             }
         }
                
         # 3. If NOT upgradeSummary, and NOT successOnly, print normal output
         if (-not $upgradeSummary -and -not $successOnly) {        
-            "{$outputLabel}: $output`n" | Out-File $logPath -Append
+            # Decide label
+            $label = $outputLabel
+            if (-not $label) { $label = $taskName }
+            # Format output
+            if ($output.Count -gt 1) {
+                $formattedOutput = $output -join "`n" 
+            }
+            else {
+                $formattedOutput = $output[0]
+            }  
+            # Log output for multi-line, or single line
+            if ($output.Count -gt 1) {
+                #Multi-line output
+                "{$label}:" | Out-File $logPath -Append
+                "$formattedOutput`n" | Out-File $logPath -Append
+            }
+            else {  
+                #Single-line output
+                "{$label}: $formattedOutput`n" | Out-File $logPath -Append
             }
         }
     }
     else {
-        if ($outputLabel) {
-            "{$outputLabel}: failed" | Out-File $logPath -Append
-            "Error: $($output[0])`n" | Out-File $logPath -Append
-        }
-        else {
         "{$taskName}: failed" | Out-File $logPath -Append
-        "Error: $($output[0])`n" | Out-File $logPath -Append
+        "ERROR: $($output[0])`n" | Out-File $logPath -Append
     }
 }
     # -------------------------
@@ -105,9 +124,9 @@
     Run-SSH -taskName "Package upgrades" -sshCommand "sudo apt upgrade" -upgradeSummary
 
     # -------------------------
-    # 6. LOOP 3: PIHOLE UPDATES REPORT
+    # 6. LOOP 3: PI-HOLE UPDATES REPORT
     # -------------------------
-    "----------`n PIHOLE UPDATES REPORT `n----------"  | Out-File $logPath -Append
+    "----------`n PI-HOLE UPDATES REPORT `n----------"  | Out-File $logPath -Append
 
     Run-SSH -taskName "Check for Pi-hole updates" -outputLabel "Pi-hole versions" -sshCommand "pihole -v"
     Run-SSH -taskName "Pi-hole updates" -sshCommand "pihole -up" -successOnly
@@ -115,7 +134,7 @@
     # -------------------------
     # 7. REBOOT
     # -------------------------
-    "----------`n RASPBERRYPI REBOOT `n----------"  | Out-File $logPath -Append  
+    "----------`n RASPBERRY-PI REBOOT `n----------"  | Out-File $logPath -Append  
 
    # Run-SSH -taskName "Rebooting Raspberry Pi" -sshCommand "sudo reboot" -successOnly
 
