@@ -41,32 +41,8 @@
 
     $output = ssh $piHost $sshCommand 2>&1
     $output = @($output)
-    #$output = ssh $piHost "bash -lc '$sshCommand'" 2>&1
-
-    # RAW DEBUG
-    "RAW [$taskName]: >$output<" | Out-File $logPath -Append
-
-    #$output = $output -split "\r?\n"
-    #$output = $output -replace "[\x00-\x1F\x7F]", ""
-    #$output = $output | ForEach-Object { $_.Trim() }
-    #$output = $output | ForEach-Object { $_.TrimStart() }
-    
-    # --- DEBUG: inspect raw output shape ---
-    "DEBUG [$taskName] ------------------------" | Out-File $logPath -Append
-
-    if ($null -eq $output) {
-        "DEBUG: output is NULL" | Out-File $logPath -Append
-    }
-    else {
-        "DEBUG Type: $($output.GetType().FullName)" | Out-File $logPath -Append
-        "DEBUG Count: $($output.Count)" | Out-File $logPath -Append
-
-        for ($i = 0; $i -lt $output.Count; $i++) {
-            "DEBUG output[$i]: >$($output[$i])<" | Out-File $logPath -Append
-        }
-    }
-
-    "DEBUG END [$taskName] --------------------`n" | Out-File $logPath -Append  
+    $output = $output -split "\r?\n"
+    $output = @($output | ForEach-Object { $_.TrimStart() })
     
     if ($LASTEXITCODE -eq 0) {
        
@@ -111,7 +87,12 @@
             if ($output.Count -gt 1) {
                 #Multi-line output
                 "{$label}:" | Out-File $logPath -Append
-                "$formattedOutput`n" | Out-File $logPath -Append
+
+                #indent each line of the output for better readability
+                $indentedOutput = $formattedOutput -split "`n" | ForEach-Object { "    $_" }
+                ($indentedOutput -join "`n") | Out-File $logPath -Append
+
+                "" | Out-File $logPath -Append
             }
             else {  
                 #Single-line output
@@ -150,7 +131,7 @@
     "----------`n PI-HOLE UPDATES REPORT `n----------"  | Out-File $logPath -Append
 
     Run-SSH -taskName "Check for Pi-hole updates" -outputLabel "Pi-hole versions" -sshCommand "pihole -v"
-    Run-SSH -taskName "Pi-hole updates" -sshCommand "pihole -up" -successOnly
+    Run-SSH -taskName "Pi-hole updates" -sshCommand "sudo pihole -up" -successOnly
 
     # -------------------------
     # 7. REBOOT
