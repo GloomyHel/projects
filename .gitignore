@@ -9,6 +9,9 @@ raspberryPi_auto_update/*.log
 #ignore all .png files in the raspberryPi_auto_update directory
 raspberryPi_auto_update/*.png
 #ignore specific files in the raspberryPi_auto_update directory files
-raspberryPi_auto_update/pihole_update.log
 raspberryPi_auto_update/log.txt
 raspberryPi_auto_update/runwDebugs.txt
+raspberryPi_auto_update/run.txt
+raspberryPi_auto_update/test.ps1
+raspberryPi_auto_update/test_log.txt
+raspberryPi_auto_update/test.txt

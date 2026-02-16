@@ -36,7 +36,7 @@
         [string]$sshCommand,
         [string]$outputLabel,
         [switch]$successOnly,
-        [switch]$upgradeSummary
+        [string[]]$upgradeSummary
     )
 
     $output = ssh $piHost $sshCommand 2>&1
